@@ -6,29 +6,31 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.provisioning.JdbcUserDetailsManager;
+import org.springframework.security.provisioning.UserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+
+import javax.sql.DataSource;
 
 @Configuration
 public class DemoSecurityConfig {
+    //add support for JDBC.... no more hardocoded users :-
     @Bean
-    public InMemoryUserDetailsManager userDetailsManager(){
-        UserDetails john= User.builder()
-                .username("john")
-                .password("{noop}test123")
-                .roles("EMPLOYEE")
-                .build();
-        UserDetails mary= User.builder()
-                .username("mary")
-                .password("{noop}test123")
-                .roles("EMPLOYEE", "MANAGER")
-                .build();
-        UserDetails susan= User.builder()
-                .username("susan")
-                .password("{noop}test123")
-                .roles("EMPLOYEE", "MANAGER","ADMIN")
-                .build();
-        return new InMemoryUserDetailsManager(john,mary,susan);
+    public UserDetailsManager userDetailsManager(DataSource dataSource){
+        //here this DataSource dataSource is auto-configured by springboot
+        JdbcUserDetailsManager jdbcUserDetailsManager = new JdbcUserDetailsManager(dataSource);
+        //define query to retrive a user by username
+        jdbcUserDetailsManager.setUsersByUsernameQuery(
+                "select user_id, pw,active from members where user_id=?"
+        );
+        //define query to retrive authorities/roles bu7 username
+
+        jdbcUserDetailsManager.setAuthoritiesByUsernameQuery(
+                "select user_id,role from roles where user_id=?"
+        );
+        return jdbcUserDetailsManager;   // this line tell spring security to use JDBC authentication with our data source
     }
+
 
     //configuring security of web paths in application, login, logout etc
     @Bean
@@ -50,4 +52,25 @@ public class DemoSecurityConfig {
                 ).exceptionHandling(configurer->configurer.accessDeniedPage("/access-denied"));
         return http.build();
     }
+      /*
+    @Bean
+    public InMemoryUserDetailsManager userDetailsManager(){
+        UserDetails john= User.builder()
+                .username("john")
+                .password("{noop}test123")
+                .roles("EMPLOYEE")
+                .build();
+        UserDetails mary= User.builder()
+                .username("mary")
+                .password("{noop}test123")
+                .roles("EMPLOYEE", "MANAGER")
+                .build();
+        UserDetails susan= User.builder()
+                .username("susan")
+                .password("{noop}test123")
+                .roles("EMPLOYEE", "MANAGER","ADMIN")
+                .build();
+        return new InMemoryUserDetailsManager(john,mary,susan);
+    }
+*/
 }
